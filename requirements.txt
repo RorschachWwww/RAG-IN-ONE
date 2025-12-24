@@ -1,0 +1,16 @@
+langchain-community==0.2.1
+langchain-core==0.2.11
+unstructured==0.18.21
+unstructured[md]==0.18.21
+unstructured[image]==0.18.21
+jq==1.7.0
+
+# PDF解析核心引擎（底层依赖）
+pymupdf>=1.25.0
+
+# LLM 优化解析套件 (用于转 Markdown)
+pymupdf4llm>=0.2.7
+
+# LangChain 官方集成包
+langchain-pymupdf4llm>=0.5.0
+
