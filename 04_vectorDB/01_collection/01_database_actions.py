@@ -52,17 +52,8 @@ def database_management_demo():
     # 注意：你不能直接“重命名”数据库。
     # 这里的“改”通常指的是修改数据库的 Properties (元数据/配置属性)。
     print(f"\n--- 4. 修改数据库属性 (Alter) ---")
+    print("注：当前 MilvusClient SDK 暂未开放 alter_database 接口，跳过此步骤。")
     
-    # 比如我们想给这个数据库增加一个属性，或者修改之前的属性
-    client.alter_database(
-        db_name=demo_db_name,
-        properties={"priority": "critical", "description": "for_wechat_article_demo"}
-    )
-    
-    # 验证修改结果（通过 describe_database 查看详细信息）
-    db_info = client.describe_database(demo_db_name)
-    print(f"修改后的数据库信息: {db_info}")
-
     # =======================================================
     # 5. 切换/使用数据库 (Use)
     # =======================================================

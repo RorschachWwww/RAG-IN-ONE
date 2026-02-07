@@ -57,7 +57,8 @@ def entity_operations_demo():
     check_res = client.query(
         collection_name=collection_name, 
         filter="doc_id == 1001", 
-        output_fields=["source", "publish_year"]
+        output_fields=["source", "publish_year"],
+        consistency_level="Strong"
     )
     print(f"读取验证 -> source: {check_res[0].get('source')}, year: {check_res[0].get('publish_year')}")
 
@@ -94,7 +95,7 @@ def entity_operations_demo():
     print(f"Upsert 操作成功，更新/插入行数: {res3['upsert_count']}")
 
     # 验证 1001 更新结果
-    updated_res = client.query(collection_name=collection_name, filter="doc_id == 1001", output_fields=["source"])
+    updated_res = client.query(collection_name=collection_name, filter="doc_id == 1001", output_fields=["source"], consistency_level="Strong")
     print(f"验证 1001 更新后的 source: {updated_res[0]['source']} (预期: Official Doc)")
 
     # 清理
