@@ -24,3 +24,6 @@ langchain-huggingface==1.2.0
 openai==2.15.0
 
 fastapi uvicorn requests FlagEmbedding torch
+# Milvus Vector DB support
+pymilvus>=2.4.0,<2.6.0
+langchain-milvus>=0.1.0

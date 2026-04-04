@@ -48,9 +48,10 @@ def scenario_realtime_demo():
     res = client.search(
         collection_name=collection_name,
         data=[get_random_vector()],
-        limit=1
+        limit=1,
+        consistency_level="Strong"   # 刚插入立即查询，如果不指定一致性，默认是Eventually，这里会查不出来结果。
     )
-    print(f"✓ 搜索成功，最近邻ID: {res[0][0]['id']}")
+    print(f"✓ 搜索成功，最近邻ID: {res[0][0]['doc_id']}")
 
     # 清理
     client.drop_collection(collection_name)
