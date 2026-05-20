@@ -1,0 +1,46 @@
+services:
+  bge_m3_gpu0:
+    image: rag-in-one/bge-m3-embed:latest
+    container_name: bge_m3_gpu0
+    restart: unless-stopped
+    ports:
+      - "18080:18080"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      EMBEDDING_DEVICE: "cuda:0"
+      EMBEDDING_USE_FP16: "true"
+      EMBEDDING_BATCH_SIZE: "32"
+      EMBEDDING_MAX_TEXTS: "128"
+      EMBEDDING_MAX_CONCURRENT_REQUESTS: "1"
+      LOG_LEVEL: INFO
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  bge_m3_gpu1:
+    image: rag-in-one/bge-m3-embed:latest
+    container_name: bge_m3_gpu1
+    restart: unless-stopped
+    ports:
+      - "18081:18080"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      EMBEDDING_DEVICE: "cuda:0"
+      EMBEDDING_USE_FP16: "true"
+      EMBEDDING_BATCH_SIZE: "32"
+      EMBEDDING_MAX_TEXTS: "128"
+      EMBEDDING_MAX_CONCURRENT_REQUESTS: "1"
+      LOG_LEVEL: INFO
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]

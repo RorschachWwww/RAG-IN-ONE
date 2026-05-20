@@ -1,10 +1,10 @@
-# 02_hybrid_search
+# embedding_service
 
-这个目录包含一个基于 `bge-m3` 的 embedding 服务，以及混合检索相关脚本。
+这个目录只放 `bge-m3` embedding 服务相关文件。混合检索脚本仍然保留在上一级 `02_hybrid_search` 目录。
 
 ## 启动 embedding 服务
 
-在当前目录下启动服务：
+进入当前目录后启动服务：
 
 ```bash
 uvicorn embedding_service:app --host 0.0.0.0 --port 18080
@@ -21,6 +21,9 @@ uvicorn embedding_service:app --host 0.0.0.0 --port 18080
 ```bash
 EMBEDDING_DEVICE=cuda:1 uvicorn embedding_service:app --host 0.0.0.0 --port 18080
 ```
+
+现在如果你传的是 `EMBEDDING_DEVICE=cuda:N`，服务也会自动把当前进程的
+`CUDA_VISIBLE_DEVICES` 收敛到这张卡，避免多 GPU 环境里其他卡也被初始化。
 
 常见写法：
 
@@ -67,8 +70,8 @@ curl http://127.0.0.1:18080/health
   "model_loaded": true,
   "model_id": "BAAI/bge-m3",
   "device": "cuda:1",
-  "resolved_device": "cuda:1",
-  "cuda_visible_devices": null
+  "resolved_device": "cuda:0",
+  "cuda_visible_devices": "1"
 }
 ```
 
@@ -143,4 +146,3 @@ curl -X POST http://127.0.0.1:18080/embed/both \
     "sparse_texts": ["这是 sparse 输入"]
   }'
 ```
-

@@ -1,0 +1,38 @@
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/models/hf_home \
+    HUGGINGFACE_HUB_CACHE=/models/hf_home/hub \
+    TRANSFORMERS_CACHE=/models/hf_home/transformers \
+    SENTENCE_TRANSFORMERS_HOME=/models/hf_home/sentence_transformers \
+    EMBEDDING_MODEL_ID=/models/BAAI_bge-m3 \
+    EMBEDDING_DEVICE=cuda \
+    EMBEDDING_USE_FP16=true \
+    EMBEDDING_BATCH_SIZE=32 \
+    EMBEDDING_MAX_TEXTS=128 \
+    EMBEDDING_MAX_CONCURRENT_REQUESTS=1 \
+    LOG_LEVEL=INFO \
+    HF_HUB_DISABLE_TELEMETRY=1
+
+WORKDIR /app
+
+COPY 04_vectorDB/02_hybrid_search/embedding_service/requirements-service.txt /app/requirements-service.txt
+RUN pip install --no-cache-dir -r /app/requirements-service.txt
+
+COPY 04_vectorDB/02_hybrid_search/embedding_service/download_bge_m3.py /app/download_bge_m3.py
+RUN python /app/download_bge_m3.py
+
+COPY 04_vectorDB/02_hybrid_search/embedding_service/embedding_service_prod.py /app/embedding_service_prod.py
+
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
+
+EXPOSE 18080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18080/healthz', timeout=3)"
+
+CMD ["uvicorn", "embedding_service_prod:app", "--host", "0.0.0.0", "--port", "18080", "--workers", "1"]

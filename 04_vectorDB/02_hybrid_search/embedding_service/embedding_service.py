@@ -20,13 +20,30 @@ MODEL_ID = "BAAI/bge-m3"
 # - "cuda" / "cuda:1"：NVIDIA GPU
 # 也支持通过环境变量 EMBEDDING_DEVICE 覆盖，例如：
 #   EMBEDDING_DEVICE=cuda:1
-DEVICE = os.getenv("EMBEDDING_DEVICE", "auto")
+DEVICE = os.getenv("EMBEDDING_DEVICE", "auto").strip().lower()
 
 # 如果你更习惯传 GPU 编号，可以设置 EMBEDDING_CUDA_DEVICE。
 # 这会在导入 torch 前收敛可见卡，避免一个进程把所有 GPU 都暴露出来。
 # 例如：
 #   EMBEDDING_CUDA_DEVICE=1
 CUDA_DEVICE = os.getenv("EMBEDDING_CUDA_DEVICE", "").strip()
+
+
+def _extract_cuda_index(device: str) -> str:
+    """
+    从 "cuda:N" 中提取 N；如果不是这种格式，则返回空字符串。
+    """
+    if not device.startswith("cuda:"):
+        return ""
+    _, _, idx = device.partition(":")
+    return idx if idx.isdigit() else ""
+
+
+# 如果用户显式传了 EMBEDDING_DEVICE=cuda:N，但没传 EMBEDDING_CUDA_DEVICE，
+# 默认也把可见卡收敛到 N，避免多卡环境里其他 GPU 也被当前进程初始化。
+if not CUDA_DEVICE:
+    CUDA_DEVICE = _extract_cuda_index(DEVICE)
+
 if CUDA_DEVICE and "CUDA_VISIBLE_DEVICES" not in os.environ:
     os.environ["CUDA_VISIBLE_DEVICES"] = CUDA_DEVICE
 
@@ -56,11 +73,17 @@ def resolve_device(device: str) -> str:
     - 否则：cpu
 
     如果你显式传 cpu/cuda/mps/cuda:N，也会直接返回。
+
+    额外说明：
+    - 如果已经设置了 CUDA_VISIBLE_DEVICES，那么当前进程里可见 GPU 会被重编号。
+      例如物理卡 1 在进程内会表现为 cuda:0。
     """
     device = (device or "auto").lower()
     if device in ("cpu", "cuda", "mps"):
         return device
     if device.startswith("cuda:"):
+        if os.getenv("CUDA_VISIBLE_DEVICES"):
+            return "cuda:0"
         return device
 
     # auto：动态判断 torch 的可用后端
@@ -173,10 +196,13 @@ def startup():
     - ingest/search 脚本不需要再加载模型，只需要 HTTP 调用服务
     """
     global _model, _resolved_device
+    import torch
     from FlagEmbedding import BGEM3FlagModel
 
     real_device = resolve_device(DEVICE)
     _resolved_device = real_device
+    if real_device.startswith("cuda"):
+        torch.cuda.set_device(real_device)
     t0 = time.time()
     _model = BGEM3FlagModel(MODEL_ID, use_fp16=USE_FP16, device=real_device)
     print(f"[startup] Model loaded: {MODEL_ID} device={real_device} fp16={USE_FP16} cost={time.time()-t0:.3f}s")
