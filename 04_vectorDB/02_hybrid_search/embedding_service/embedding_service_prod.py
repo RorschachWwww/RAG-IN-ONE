@@ -16,7 +16,8 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
-MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "/models/BAAI_bge-m3")
+MODEL_REPO_ID = os.getenv("EMBEDDING_MODEL_REPO_ID", "BAAI/bge-m3")
+MODEL_DIR = os.getenv("EMBEDDING_MODEL_DIR", "/models/BAAI_bge-m3")
 DEVICE = os.getenv("EMBEDDING_DEVICE", "cuda")
 USE_FP16 = _env_bool("EMBEDDING_USE_FP16", True)
 BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
@@ -119,13 +120,14 @@ async def lifespan(app: FastAPI):
         torch.cuda.set_device(real_device)
 
     t0 = time.time()
-    model = BGEM3FlagModel(MODEL_ID, use_fp16=USE_FP16, device=real_device)
+    model = BGEM3FlagModel(MODEL_DIR, use_fp16=USE_FP16, device=real_device)
     app_state["model"] = model
     app_state["resolved_device"] = real_device
     app_state["started_at"] = time.time()
     logger.info(
-        "model loaded model_id=%s resolved_device=%s fp16=%s load_cost_sec=%.3f",
-        MODEL_ID,
+        "model loaded model_repo_id=%s model_dir=%s resolved_device=%s fp16=%s load_cost_sec=%.3f",
+        MODEL_REPO_ID,
+        MODEL_DIR,
         real_device,
         USE_FP16,
         time.time() - t0,
@@ -159,7 +161,8 @@ def healthz():
 def readyz():
     return {
         "ok": app_state["model"] is not None,
-        "model_id": MODEL_ID,
+        "model_repo_id": MODEL_REPO_ID,
+        "model_dir": MODEL_DIR,
         "resolved_device": app_state["resolved_device"],
         "cuda_visible_devices": os.getenv("CUDA_VISIBLE_DEVICES"),
         "batch_size": BATCH_SIZE,
