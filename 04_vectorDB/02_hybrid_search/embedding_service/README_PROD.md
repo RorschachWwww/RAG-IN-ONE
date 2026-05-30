@@ -79,6 +79,12 @@ docker build -f 04_vectorDB/02_hybrid_search/embedding_service/Dockerfile.bge-m3
 - 下载 `BAAI/bge-m3` 到镜像内的 `/models/BAAI_bge-m3`
 - 把服务代码打进去
 
+说明：
+
+- 当前 Dockerfile 使用的是 `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime`
+- 这是为了兼容新版 `transformers` 对 `torch.load` 的安全限制
+- 如果继续使用 `torch 2.4.x`，加载 `bge-m3` 时可能会直接启动失败
+
 构建完成后，可以先在联网环境本地验证镜像：
 
 如果构建机本身有 GPU，并且想验证 GPU 运行：
