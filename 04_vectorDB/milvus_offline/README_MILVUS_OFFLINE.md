@@ -13,6 +13,13 @@
 | etcd | `quay.io/coreos/etcd:v3.5.25` |
 | MinIO | `minio/minio:RELEASE.2024-05-28T17-19-04Z` |
 
+注意：
+
+- 离线打包时建议固定按生产环境平台拉取镜像
+- 当前脚本默认使用 `linux/amd64`
+- 这可以避免在 ARM 构建机上误打出不完整或不适用于生产环境的 tar 包
+- 如果本地已经有目标镜像，脚本会直接复用，不会强制重新拉取
+
 相关文件：
 
 - [pull_and_save_milvus_images.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh)
@@ -29,16 +36,32 @@ chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pul
 /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
 ```
 
+脚本行为：
+
+- 如果本地已经有这 3 个镜像，就直接使用本地镜像导出
+- 如果某个镜像本地没有，才会按 `PLATFORM` 去拉取
+
 默认会生成一个合并 tar：
 
 ```bash
 dist/milvus-v2.6.17-offline-images.tar
 ```
 
+脚本现在会在导出前做一次镜像大小自检。
+
+如果你看到导出的 tar 只有几十 MB，通常就是镜像拉取不完整或者平台不对，不能直接拿去生产环境。
+
 如果你想改导出目录或文件名：
 
 ```bash
 OUTPUT_DIR=/tmp OUTPUT_FILE=milvus-offline-20260530.tar \
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
+```
+
+如果你的生产环境不是 `linux/amd64`，也可以显式指定平台：
+
+```bash
+PLATFORM=linux/amd64 \
 /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
 ```
 
