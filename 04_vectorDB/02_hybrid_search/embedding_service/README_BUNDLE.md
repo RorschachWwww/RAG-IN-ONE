@@ -35,6 +35,31 @@ chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/e
 
 ## 可选参数
 
+如果你想用传参方式改输出目录：
+
+```bash
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/collect_embedding_service_bundle.sh \
+  --bundle-dir /tmp/embedding_bundle
+```
+
+如果你想同时指定 tar 查找目录：
+
+```bash
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/collect_embedding_service_bundle.sh \
+  --bundle-dir /tmp/embedding_bundle \
+  --search-dir /path/to/tar/files
+```
+
+如果你想改 tar 匹配规则：
+
+```bash
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/collect_embedding_service_bundle.sh \
+  --bundle-dir /tmp/embedding_bundle \
+  --tar-glob '*.tar'
+```
+
+如果你还是想用环境变量方式，也仍然支持。
+
 如果你想改输出目录：
 
 ```bash

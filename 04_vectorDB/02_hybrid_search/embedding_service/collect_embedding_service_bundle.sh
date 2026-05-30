@@ -6,6 +6,45 @@ BUNDLE_DIR="${BUNDLE_DIR:-${SCRIPT_DIR}/bundle_embedding_service}"
 TAR_GLOB="${TAR_GLOB:-bge-m3-embed*.tar}"
 SEARCH_DIR="${SEARCH_DIR:-$(pwd)}"
 
+usage() {
+  cat <<EOF
+Usage:
+  $(basename "$0") [--bundle-dir DIR] [--search-dir DIR] [--tar-glob PATTERN]
+
+Options:
+  --bundle-dir DIR   Target output directory for the bundle
+  --search-dir DIR   Directory to search for image tar files
+  --tar-glob PATTERN Filename glob for image tar files
+  -h, --help         Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --bundle-dir)
+      BUNDLE_DIR="$2"
+      shift 2
+      ;;
+    --search-dir)
+      SEARCH_DIR="$2"
+      shift 2
+      ;;
+    --tar-glob)
+      TAR_GLOB="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
 mkdir -p "${BUNDLE_DIR}"
 
 copy_required_file() {
