@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${CONFIG_FILE:-${SCRIPT_DIR}/milvus-runtime.env}"
-IMAGE_TAR="${IMAGE_TAR:-${SCRIPT_DIR}/dist/milvus-v2.6.17-offline-images.tar}"
+IMAGE_TAR="${IMAGE_TAR:-}"
+IMAGE_TAR_DIR="${IMAGE_TAR_DIR:-${SCRIPT_DIR}/dist}"
 COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/docker-compose.milvus.yml}"
 DOCKER_VOLUME_DIRECTORY="${DOCKER_VOLUME_DIRECTORY:-${SCRIPT_DIR}/data}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
@@ -19,7 +20,8 @@ if [[ -f "${CONFIG_FILE}" ]]; then
   source "${CONFIG_FILE}"
 fi
 
-IMAGE_TAR="${IMAGE_TAR:-${SCRIPT_DIR}/dist/milvus-v2.6.17-offline-images.tar}"
+IMAGE_TAR="${IMAGE_TAR:-}"
+IMAGE_TAR_DIR="${IMAGE_TAR_DIR:-${SCRIPT_DIR}/dist}"
 COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/docker-compose.milvus.yml}"
 DOCKER_VOLUME_DIRECTORY="${DOCKER_VOLUME_DIRECTORY:-${SCRIPT_DIR}/data}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
@@ -29,11 +31,6 @@ MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
 MILVUS_GRPC_PORT="${MILVUS_GRPC_PORT:-19530}"
 MILVUS_HTTP_PORT="${MILVUS_HTTP_PORT:-9091}"
 MILVUS_NETWORK_NAME="${MILVUS_NETWORK_NAME:-milvus}"
-
-if [[ ! -f "${IMAGE_TAR}" ]]; then
-  echo "image tar not found: ${IMAGE_TAR}"
-  exit 1
-fi
 
 if [[ ! -f "${COMPOSE_FILE}" ]]; then
   echo "compose file not found: ${COMPOSE_FILE}"
@@ -45,8 +42,31 @@ mkdir -p \
   "${DOCKER_VOLUME_DIRECTORY}/volumes/minio" \
   "${DOCKER_VOLUME_DIRECTORY}/volumes/milvus"
 
-echo "loading images from ${IMAGE_TAR}"
-docker load -i "${IMAGE_TAR}"
+load_image_tars() {
+  if [[ -n "${IMAGE_TAR}" ]]; then
+    if [[ ! -f "${IMAGE_TAR}" ]]; then
+      echo "image tar not found: ${IMAGE_TAR}"
+      exit 1
+    fi
+
+    echo "loading image from ${IMAGE_TAR}"
+    docker load -i "${IMAGE_TAR}"
+    return
+  fi
+
+  if ! compgen -G "${IMAGE_TAR_DIR}/*.tar" >/dev/null 2>&1; then
+    echo "no image tar files found in: ${IMAGE_TAR_DIR}"
+    echo "set IMAGE_TAR=/path/to/file.tar or IMAGE_TAR_DIR=/path/to/tar-dir"
+    exit 1
+  fi
+
+  for tar_file in "${IMAGE_TAR_DIR}"/*.tar; do
+    echo "loading image from ${tar_file}"
+    docker load -i "${tar_file}"
+  done
+}
+
+load_image_tars
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE_CMD=(docker compose)

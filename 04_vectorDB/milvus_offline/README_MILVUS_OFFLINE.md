@@ -38,23 +38,24 @@ chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pul
 
 脚本行为：
 
-- 如果本地已经有这 3 个镜像，就直接使用本地镜像导出
-- 如果某个镜像本地没有，才会按 `PLATFORM` 去拉取
+- 默认使用 `docker buildx` 从 registry 为指定平台直接生成离线 tar
+- 这样可以绕过某些环境里 `docker save` 对 `milvus` / `etcd` 只导出几 KB 元数据的问题
+- 导出完成后会额外检查 tar 文件大小，避免生成明显异常的小文件
 
-默认会生成一个合并 tar：
+默认会生成 3 个 tar 文件：
 
 ```bash
-dist/milvus-v2.6.17-offline-images.tar
+dist/milvus-v2.6.17.tar
+dist/etcd-v3.5.25.tar
+dist/minio-RELEASE.2024-05-28T17-19-04Z.tar
 ```
 
-脚本现在会在导出前做一次镜像大小自检。
+如果你看到 `milvus` 或 `etcd` 的 tar 只有几 KB，不能直接拿去生产环境。
 
-如果你看到导出的 tar 只有几十 MB，通常就是镜像拉取不完整或者平台不对，不能直接拿去生产环境。
-
-如果你想改导出目录或文件名：
+如果你想改导出目录：
 
 ```bash
-OUTPUT_DIR=/tmp OUTPUT_FILE=milvus-offline-20260530.tar \
+OUTPUT_DIR=/tmp/milvus-images \
 /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
 ```
 
@@ -65,13 +66,23 @@ PLATFORM=linux/amd64 \
 /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
 ```
 
+如果你确实想回到传统 `docker save` 模式，也可以显式指定：
+
+```bash
+EXPORT_MODE=save PLATFORM=linux/amd64 \
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh
+```
+
+但如果你的环境里 `docker save` 导出的 `milvus` / `etcd` 只有几 KB，请继续使用默认的 `EXPORT_MODE=buildx`。
+
 ## 2. 把 tar 拷贝到生产环境
 
 把以下文件一起拷贝到生产环境一台机器上：
 
-- 镜像 tar 文件
+- 3 个镜像 tar 文件，或包含这 3 个 tar 文件的目录
 - [import_and_run_milvus.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/import_and_run_milvus.sh)
 - [docker-compose.milvus.yml](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/docker-compose.milvus.yml)
+- [milvus-runtime.env](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/milvus-runtime.env)
 
 ## 3. 在生产环境导入并启动 Milvus
 
@@ -87,18 +98,24 @@ vi /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/milvus-ru
 DOCKER_VOLUME_DIRECTORY=/data/milvus-offline
 ```
 
+如果你把 3 个 tar 文件放在同一个目录，也建议配置：
+
+```bash
+IMAGE_TAR_DIR=/path/to/milvus-image-tars
+```
+
 执行：
 
 ```bash
 chmod +x /path/to/import_and_run_milvus.sh
-IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
 
-如果你已经在 `milvus-runtime.env` 里写好了 `IMAGE_TAR`，那直接执行脚本即可：
+如果你只想临时指定 tar 目录，不改配置文件：
 
 ```bash
 chmod +x /path/to/import_and_run_milvus.sh
+IMAGE_TAR_DIR=/path/to/milvus-image-tars \
 /path/to/import_and_run_milvus.sh
 ```
 
@@ -121,7 +138,6 @@ chmod +x /path/to/import_and_run_milvus.sh
 
 ```bash
 DOCKER_VOLUME_DIRECTORY=/data/milvus \
-IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
 
@@ -134,7 +150,6 @@ MILVUS_GRPC_PORT=19531 \
 MILVUS_HTTP_PORT=9092 \
 MINIO_API_PORT=9002 \
 MINIO_CONSOLE_PORT=9003 \
-IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
 
@@ -143,7 +158,6 @@ IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 ```bash
 MINIO_ACCESS_KEY=your-access-key \
 MINIO_SECRET_KEY=your-secret-key \
-IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
 
