@@ -102,7 +102,74 @@ IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
 
-## 5. 健康检查
+## 5. 镜像已经加载时，如何一键拉起
+
+如果你的生产环境里这 3 个镜像都已经提前 `docker load` 过了：
+
+- `milvusdb/milvus:v2.6.17`
+- `quay.io/coreos/etcd:v3.5.25`
+- `minio/minio:RELEASE.2024-05-28T17-19-04Z`
+
+那么不需要再执行 `docker load`，可以直接用 compose 一键拉起。
+
+先进入 `docker-compose.milvus.yml` 所在目录：
+
+```bash
+cd /path/to/04_vectorDB/milvus_offline
+```
+
+最简单的启动方式：
+
+```bash
+docker compose -f docker-compose.milvus.yml up -d
+```
+
+如果你的环境里是老版本 `docker-compose`：
+
+```bash
+docker-compose -f docker-compose.milvus.yml up -d
+```
+
+这会直接启动：
+
+- `milvus-etcd`
+- `milvus-minio`
+- `milvus-standalone`
+
+默认数据目录会落在当前目录下的 `data`，所以更推荐显式指定，避免将来换目录后找不到数据：
+
+```bash
+cd /path/to/04_vectorDB/milvus_offline
+mkdir -p /data/milvus-offline/volumes/etcd /data/milvus-offline/volumes/minio /data/milvus-offline/volumes/milvus
+
+DOCKER_VOLUME_DIRECTORY=/data/milvus-offline \
+docker compose -f docker-compose.milvus.yml up -d
+```
+
+如果你还想同时改端口或 MinIO 账号，也可以一条命令带上：
+
+```bash
+DOCKER_VOLUME_DIRECTORY=/data/milvus-offline \
+MILVUS_GRPC_PORT=19531 \
+MILVUS_HTTP_PORT=9092 \
+MINIO_API_PORT=9002 \
+MINIO_CONSOLE_PORT=9003 \
+MINIO_ACCESS_KEY=your-access-key \
+MINIO_SECRET_KEY=your-secret-key \
+docker compose -f docker-compose.milvus.yml up -d
+```
+
+如果你想确认镜像确实都已经在本机：
+
+```bash
+docker image inspect milvusdb/milvus:v2.6.17
+docker image inspect quay.io/coreos/etcd:v3.5.25
+docker image inspect minio/minio:RELEASE.2024-05-28T17-19-04Z
+```
+
+这套方式适合“镜像已经在生产机上，只差把服务起起来”的场景。
+
+## 6. 健康检查
 
 Milvus：
 
@@ -124,7 +191,7 @@ docker logs -f milvus-etcd
 docker logs -f milvus-minio
 ```
 
-## 6. 停止服务
+## 7. 停止服务
 
 在 `docker-compose.milvus.yml` 所在目录执行：
 
@@ -132,7 +199,98 @@ docker logs -f milvus-minio
 docker compose -f docker-compose.milvus.yml down
 ```
 
-## 7. 说明
+如果你启动时指定过环境变量，停止时不需要重复带上；容器名是固定的：
+
+- `milvus-etcd`
+- `milvus-minio`
+- `milvus-standalone`
+
+## 8. systemd 开机自启
+
+如果你希望生产机重启后自动拉起 Milvus，推荐给这套 compose 配一个 `systemd` 服务。
+
+先确认以下目录和文件已经固定好位置：
+
+- `docker-compose.milvus.yml`
+- Milvus 数据目录，例如 `/data/milvus-offline`
+
+下面给出一个示例服务文件：
+
+```ini
+[Unit]
+Description=Milvus Offline Standalone
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/path/to/04_vectorDB/milvus_offline
+Environment=DOCKER_VOLUME_DIRECTORY=/data/milvus-offline
+ExecStart=/usr/bin/docker compose -f docker-compose.milvus.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.milvus.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+把它保存为：
+
+```bash
+/etc/systemd/system/milvus-offline.service
+```
+
+然后执行：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable milvus-offline
+sudo systemctl start milvus-offline
+```
+
+查看状态：
+
+```bash
+sudo systemctl status milvus-offline
+docker ps
+```
+
+如果你的宿主机没有 `docker compose` 子命令，只有老版本 `docker-compose`，可以把服务文件里的启动命令改成：
+
+```ini
+ExecStart=/usr/bin/docker-compose -f docker-compose.milvus.yml up -d
+ExecStop=/usr/bin/docker-compose -f docker-compose.milvus.yml down
+```
+
+如果你启动时还需要固定端口、MinIO 账号等配置，也可以继续在服务文件里加环境变量：
+
+```ini
+Environment=DOCKER_VOLUME_DIRECTORY=/data/milvus-offline
+Environment=MILVUS_GRPC_PORT=19530
+Environment=MILVUS_HTTP_PORT=9091
+Environment=MINIO_API_PORT=9000
+Environment=MINIO_CONSOLE_PORT=9001
+Environment=MINIO_ACCESS_KEY=minioadmin
+Environment=MINIO_SECRET_KEY=minioadmin
+```
+
+如果后续修改了 compose 文件或 systemd 服务文件，记得执行：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart milvus-offline
+```
+
+如果你想取消开机自启：
+
+```bash
+sudo systemctl disable milvus-offline
+sudo systemctl stop milvus-offline
+```
+
+## 9. 说明
 
 这份 compose 结构参考了 Milvus 官方 standalone Docker Compose 的服务关系和组件版本约束，并把镜像版本固定成了你指定的版本组合：
 

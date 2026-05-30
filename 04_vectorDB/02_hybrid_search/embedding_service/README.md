@@ -116,6 +116,13 @@ nvidia-smi pmon -c 1
 curl http://127.0.0.1:18080/health
 ```
 
+### healthz / readyz（生产版服务）
+
+```bash
+curl http://127.0.0.1:18080/healthz
+curl http://127.0.0.1:18080/readyz
+```
+
 ### dense embedding
 
 ```bash
@@ -124,6 +131,14 @@ curl -X POST http://127.0.0.1:18080/embed/dense \
   -d '{
     "texts": ["你好，帮我生成一个向量"]
   }'
+```
+
+只看是否成功返回维度和向量数：
+
+```bash
+curl -s -X POST http://127.0.0.1:18080/embed/dense \
+  -H 'Content-Type: application/json' \
+  -d '{"texts":["你好，帮我生成一个向量"]}' | jq '.dim, (.vectors | length)'
 ```
 
 ### sparse embedding

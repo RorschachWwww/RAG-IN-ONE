@@ -210,11 +210,39 @@ chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/e
 
 ## 七、健康检查与功能检查
 
+先确认容器和端口映射：
+
+```bash
+docker ps
+docker port bge_m3_gpu0
+docker port bge_m3_gpu1
+```
+
+说明：
+
+- 容器内部服务固定监听 `18080`
+- 宿主机端口会从 `HOST_PORT_BASE` 开始递增
+- 所以日志里两个容器都打印 `18080` 是正常现象，真正对外访问要看宿主机映射端口
+
+检查健康状态：
+
+```bash
+curl http://127.0.0.1:18080/healthz
+curl http://127.0.0.1:18081/healthz
+```
+
 检查实例是否 ready：
 
 ```bash
 curl http://127.0.0.1:18080/readyz
 curl http://127.0.0.1:18081/readyz
+```
+
+如果你前面挂了 Nginx 统一入口，也可以直接测试：
+
+```bash
+curl http://127.0.0.1:8080/healthz
+curl http://127.0.0.1:8080/readyz
 ```
 
 测试 dense：
@@ -225,12 +253,31 @@ curl -X POST http://127.0.0.1:18080/embed/dense \
   -d '{"texts":["你好，帮我生成一个向量"]}'
 ```
 
+只看是否成功返回维度和向量数：
+
+```bash
+curl -s -X POST http://127.0.0.1:18080/embed/dense \
+  -H 'Content-Type: application/json' \
+  -d '{"texts":["你好，帮我生成一个向量"]}' | jq '.dim, (.vectors | length)'
+```
+
 测试 sparse：
 
 ```bash
 curl -X POST http://127.0.0.1:18081/embed/sparse \
   -H 'Content-Type: application/json' \
   -d '{"texts":["混合检索测试文本"]}'
+```
+
+测试 both：
+
+```bash
+curl -X POST http://127.0.0.1:18080/embed/both \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "dense_texts":["这是 dense 输入"],
+    "sparse_texts":["这是 sparse 输入"]
+  }'
 ```
 
 查看 GPU 使用情况：
