@@ -200,6 +200,7 @@ chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/e
 - 这是因为当前 `bge-m3` 服务实现更适合“一卡一实例”，这样更稳，也更容易扩缩容
 - 容器内统一使用 `EMBEDDING_DEVICE=cuda:0`
 - 这是因为每个容器只看得到自己绑定的那一张物理卡
+- GPU 隔离由 Docker 的 `--gpus device=...` 完成，不再额外手动设置 `CUDA_VISIBLE_DEVICES`，避免二次过滤后把 GPU 隐藏掉
 
 ## 七、健康检查与功能检查
 

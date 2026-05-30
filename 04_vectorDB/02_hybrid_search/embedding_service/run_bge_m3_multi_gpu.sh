@@ -82,7 +82,6 @@ for index in "${!GPU_ARRAY[@]}"; do
     --restart unless-stopped \
     --gpus "device=${gpu}" \
     -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
-    -e CUDA_VISIBLE_DEVICES="${gpu}" \
     -e EMBEDDING_DEVICE="cuda:0" \
     -e EMBEDDING_USE_FP16="${EMBEDDING_USE_FP16}" \
     -e EMBEDDING_BATCH_SIZE="${EMBEDDING_BATCH_SIZE}" \

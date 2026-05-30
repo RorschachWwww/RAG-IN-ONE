@@ -35,7 +35,6 @@ docker run -d \
   --restart unless-stopped \
   --gpus "device=${GPU_DEVICE}" \
   -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
-  -e CUDA_VISIBLE_DEVICES="${GPU_DEVICE}" \
   -e EMBEDDING_DEVICE="${EMBEDDING_DEVICE}" \
   -e EMBEDDING_USE_FP16="${EMBEDDING_USE_FP16}" \
   -e EMBEDDING_BATCH_SIZE="${EMBEDDING_BATCH_SIZE}" \
