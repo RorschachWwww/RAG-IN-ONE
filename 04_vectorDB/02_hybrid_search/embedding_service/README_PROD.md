@@ -81,8 +81,16 @@ docker build -f 04_vectorDB/02_hybrid_search/embedding_service/Dockerfile.bge-m3
 
 构建完成后，可以先在联网环境本地验证镜像：
 
+如果构建机本身有 GPU，并且想验证 GPU 运行：
+
 ```bash
-docker run --rm -p 18080:18080 rag-in-one/bge-m3-embed:latest
+docker run --rm --gpus all -p 18080:18080 rag-in-one/bge-m3-embed:latest
+```
+
+如果构建机没有 GPU，只想验证服务能否启动：
+
+```bash
+docker run --rm -e EMBEDDING_DEVICE=cpu -p 18080:18080 rag-in-one/bge-m3-embed:latest
 ```
 
 ## 三、导出镜像

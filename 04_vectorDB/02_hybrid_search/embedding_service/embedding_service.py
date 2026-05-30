@@ -98,6 +98,15 @@ def resolve_device(device: str) -> str:
     return "cpu"
 
 
+def torch_set_device_value(device: str) -> str:
+    """
+    torch.cuda.set_device() 需要明确索引，"cuda" 需要转换成 "cuda:0"。
+    """
+    if device == "cuda":
+        return "cuda:0"
+    return device
+
+
 def pick_dense_vecs(out: Dict[str, Any]):
     """
     从 FlagEmbedding 的 encode 输出中取出 dense 向量矩阵。
@@ -202,7 +211,7 @@ def startup():
     real_device = resolve_device(DEVICE)
     _resolved_device = real_device
     if real_device.startswith("cuda"):
-        torch.cuda.set_device(real_device)
+        torch.cuda.set_device(torch_set_device_value(real_device))
     t0 = time.time()
     _model = BGEM3FlagModel(MODEL_ID, use_fp16=USE_FP16, device=real_device)
     print(f"[startup] Model loaded: {MODEL_ID} device={real_device} fp16={USE_FP16} cost={time.time()-t0:.3f}s")

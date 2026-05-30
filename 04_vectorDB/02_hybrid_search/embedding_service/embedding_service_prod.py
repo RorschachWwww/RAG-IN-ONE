@@ -18,7 +18,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 MODEL_REPO_ID = os.getenv("EMBEDDING_MODEL_REPO_ID", "BAAI/bge-m3")
 MODEL_DIR = os.getenv("EMBEDDING_MODEL_DIR", "/models/BAAI_bge-m3")
-DEVICE = os.getenv("EMBEDDING_DEVICE", "cuda")
+DEVICE = os.getenv("EMBEDDING_DEVICE", "auto")
 USE_FP16 = _env_bool("EMBEDDING_USE_FP16", True)
 BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
 MAX_TEXTS = int(os.getenv("EMBEDDING_MAX_TEXTS", "128"))
@@ -56,6 +56,15 @@ def resolve_device(device: str) -> str:
     except Exception:
         logger.exception("Resolve device failed, fallback to cpu")
     return "cpu"
+
+
+def torch_set_device_value(device: str) -> str:
+    """
+    torch.cuda.set_device() 需要明确索引，"cuda" 需要转换成 "cuda:0"。
+    """
+    if device == "cuda":
+        return "cuda:0"
+    return device
 
 
 def pick_dense_vecs(out: Dict[str, Any]):
@@ -117,7 +126,7 @@ async def lifespan(app: FastAPI):
 
     real_device = resolve_device(DEVICE)
     if real_device.startswith("cuda"):
-        torch.cuda.set_device(real_device)
+        torch.cuda.set_device(torch_set_device_value(real_device))
 
     t0 = time.time()
     model = BGEM3FlagModel(MODEL_DIR, use_fp16=USE_FP16, device=real_device)
