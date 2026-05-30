@@ -18,6 +18,7 @@
 - [pull_and_save_milvus_images.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/pull_and_save_milvus_images.sh)
 - [import_and_run_milvus.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/import_and_run_milvus.sh)
 - [docker-compose.milvus.yml](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/docker-compose.milvus.yml)
+- [milvus-runtime.env](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/milvus-runtime.env)
 
 ## 1. 在构建环境拉取并导出镜像
 
@@ -51,11 +52,30 @@ OUTPUT_DIR=/tmp OUTPUT_FILE=milvus-offline-20260530.tar \
 
 ## 3. 在生产环境导入并启动 Milvus
 
+推荐先编辑运行时配置文件：
+
+```bash
+vi /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/milvus_offline/milvus-runtime.env
+```
+
+建议至少把数据目录改成你们生产机的固定路径，例如：
+
+```bash
+DOCKER_VOLUME_DIRECTORY=/data/milvus-offline
+```
+
 执行：
 
 ```bash
 chmod +x /path/to/import_and_run_milvus.sh
 IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
+/path/to/import_and_run_milvus.sh
+```
+
+如果你已经在 `milvus-runtime.env` 里写好了 `IMAGE_TAR`，那直接执行脚本即可：
+
+```bash
+chmod +x /path/to/import_and_run_milvus.sh
 /path/to/import_and_run_milvus.sh
 ```
 
@@ -74,13 +94,15 @@ IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 
 ## 4. 可选配置
 
-如果你想改数据目录：
+如果你想临时覆盖配置文件里的数据目录：
 
 ```bash
 DOCKER_VOLUME_DIRECTORY=/data/milvus \
 IMAGE_TAR=/path/to/milvus-v2.6.17-offline-images.tar \
 /path/to/import_and_run_milvus.sh
 ```
+
+但更推荐的方式是直接改 `milvus-runtime.env`，这样以后每次启动都不用重复写。
 
 如果你想改端口：
 
@@ -136,7 +158,11 @@ docker-compose -f docker-compose.milvus.yml up -d
 - `milvus-minio`
 - `milvus-standalone`
 
-默认数据目录会落在当前目录下的 `data`，所以更推荐显式指定，避免将来换目录后找不到数据：
+默认会优先读取 `milvus-runtime.env` 里的 `DOCKER_VOLUME_DIRECTORY`。
+
+如果你没有改配置文件，才会退回到脚本目录下的 `data`。
+
+所以更推荐在配置文件里显式指定固定数据目录，避免将来换目录后找不到数据：
 
 ```bash
 cd /path/to/04_vectorDB/milvus_offline

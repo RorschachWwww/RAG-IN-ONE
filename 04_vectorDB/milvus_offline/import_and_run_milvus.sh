@@ -2,6 +2,23 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${CONFIG_FILE:-${SCRIPT_DIR}/milvus-runtime.env}"
+IMAGE_TAR="${IMAGE_TAR:-${SCRIPT_DIR}/dist/milvus-v2.6.17-offline-images.tar}"
+COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/docker-compose.milvus.yml}"
+DOCKER_VOLUME_DIRECTORY="${DOCKER_VOLUME_DIRECTORY:-${SCRIPT_DIR}/data}"
+MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
+MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
+MINIO_API_PORT="${MINIO_API_PORT:-9000}"
+MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
+MILVUS_GRPC_PORT="${MILVUS_GRPC_PORT:-19530}"
+MILVUS_HTTP_PORT="${MILVUS_HTTP_PORT:-9091}"
+MILVUS_NETWORK_NAME="${MILVUS_NETWORK_NAME:-milvus}"
+
+if [[ -f "${CONFIG_FILE}" ]]; then
+  # shellcheck disable=SC1090
+  source "${CONFIG_FILE}"
+fi
+
 IMAGE_TAR="${IMAGE_TAR:-${SCRIPT_DIR}/dist/milvus-v2.6.17-offline-images.tar}"
 COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/docker-compose.milvus.yml}"
 DOCKER_VOLUME_DIRECTORY="${DOCKER_VOLUME_DIRECTORY:-${SCRIPT_DIR}/data}"
