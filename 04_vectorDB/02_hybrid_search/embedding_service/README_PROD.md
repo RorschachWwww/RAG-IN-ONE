@@ -4,7 +4,7 @@
 
 - 构建环境可以联网
 - 生产环境不能联网
-- 生产环境有 2 张 NVIDIA T4 GPU
+- 生产环境有多张 NVIDIA GPU，例如 2 张 T4
 - 希望把 `bge-m3` 做成长期运行的 embedding 服务
 
 ## 总体方案
@@ -16,7 +16,7 @@
 3. 把镜像 `docker save` 成 tar 包
 4. 把 tar 包拷贝到生产环境
 5. 在生产环境 `docker load`
-6. 分别起 2 个容器，每个容器绑定 1 张 GPU
+6. 按 GPU 数量起多个容器，每个容器绑定 1 张 GPU
 
 这样做的好处：
 
@@ -53,7 +53,8 @@
 - [requirements-service.txt](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/requirements-service.txt)：镜像最小依赖
 - [download_bge_m3.py](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/download_bge_m3.py)：构建时下载模型
 - [Dockerfile.bge-m3](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/Dockerfile.bge-m3)：镜像构建文件
-- [run_bge_m3_dual_gpu.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_dual_gpu.sh)：双 GPU 启动脚本
+- [run_bge_m3_multi_gpu.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_multi_gpu.sh)：多 GPU 启动脚本
+- [docker-runtime.env](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/docker-runtime.env)：运行时配置文件
 - [docker-compose.bge-m3.yml](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/docker-compose.bge-m3.yml)：compose 示例
 
 ## 一、构建环境准备
@@ -100,13 +101,31 @@ docker save -o bge-m3-embed-latest.tar rag-in-one/bge-m3-embed:latest
 - NVIDIA 驱动
 - `nvidia-container-toolkit`
 
-先确认 Docker 能看到 GPU：
+先确认宿主机自己能看到 GPU：
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+nvidia-smi
 ```
 
-如果这一步不通，先不要起 embedding 服务，先把容器 GPU 运行环境打通。
+如果这一步不通，先不要起 embedding 服务，先把宿主机 GPU 驱动问题处理好。
+
+再确认 Docker 的 GPU 透传是通的。
+
+如果生产环境已经导入了 embedding 业务镜像，推荐直接用这个镜像验证：
+
+```bash
+docker run --rm --gpus all rag-in-one/bge-m3-embed:latest python -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count())"
+```
+
+这一步不依赖额外在线拉取 `nvidia/cuda` 测试镜像，更适合无法联网的生产环境。
+
+如果你们希望保留 `nvidia/cuda` 这种独立测试方式，也可以在公网构建环境提前把测试镜像一起导出，再在生产环境 `docker load` 后使用。
+
+如果上面这一步仍然不方便，最直接的验证方式就是：
+
+1. 先按本文后面的步骤启动 embedding 容器
+2. 再在宿主机执行 `nvidia-smi`
+3. 确认 GPU 已被对应容器进程占用
 
 ## 五、在生产环境导入镜像
 
@@ -114,70 +133,65 @@ docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
 docker load -i bge-m3-embed-latest.tar
 ```
 
-## 六、在 2 张 T4 上启动服务
+## 六、按配置文件启动服务
 
-### 推荐方式：起 2 个容器，每张卡 1 个实例
+### 推荐方式：按 GPU 数量起容器，每张卡 1 个实例
 
-先给脚本执行权限：
+先编辑运行时配置文件：
 
 ```bash
-chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_dual_gpu.sh
+vi /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/docker-runtime.env
+```
+
+默认配置是：
+
+```bash
+GPU_DEVICES=all
+HOST_PORT_BASE=18080
+CONTAINER_PREFIX=bge_m3
+```
+
+含义是：
+
+- `GPU_DEVICES=all`：自动发现宿主机上所有 GPU，并每张卡启动一个容器
+- `HOST_PORT_BASE=18080`：第一个容器用 `18080`，第二个用 `18081`，依次递增
+- `CONTAINER_PREFIX=bge_m3`：容器名会生成为 `bge_m3_gpu0`、`bge_m3_gpu1` 这种格式
+
+如果你只想用部分卡，例如只用 `0,1`：
+
+```bash
+GPU_DEVICES=0,1
+```
+
+如果将来机器扩成更多卡，而你希望默认全部用上，就继续保持：
+
+```bash
+GPU_DEVICES=all
+```
+
+再给脚本执行权限：
+
+```bash
+chmod +x /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_multi_gpu.sh
 ```
 
 执行：
 
 ```bash
-/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_dual_gpu.sh
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_multi_gpu.sh
 ```
 
-启动后端口对应关系：
+例如在 2 张卡的机器上，默认会启动：
 
-- `18080` -> GPU 0 实例
-- `18081` -> GPU 1 实例
-
-### 等价的手工启动命令
-
-GPU 0：
-
-```bash
-docker run -d \
-  --name bge_m3_gpu0 \
-  --restart unless-stopped \
-  --gpus '"device=0"' \
-  -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
-  -e CUDA_VISIBLE_DEVICES=0 \
-  -e EMBEDDING_DEVICE=cuda:0 \
-  -e EMBEDDING_USE_FP16=true \
-  -e EMBEDDING_BATCH_SIZE=32 \
-  -e EMBEDDING_MAX_TEXTS=128 \
-  -e EMBEDDING_MAX_CONCURRENT_REQUESTS=1 \
-  -p 18080:18080 \
-  rag-in-one/bge-m3-embed:latest
-```
-
-GPU 1：
-
-```bash
-docker run -d \
-  --name bge_m3_gpu1 \
-  --restart unless-stopped \
-  --gpus '"device=1"' \
-  -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
-  -e CUDA_VISIBLE_DEVICES=1 \
-  -e EMBEDDING_DEVICE=cuda:0 \
-  -e EMBEDDING_USE_FP16=true \
-  -e EMBEDDING_BATCH_SIZE=32 \
-  -e EMBEDDING_MAX_TEXTS=128 \
-  -e EMBEDDING_MAX_CONCURRENT_REQUESTS=1 \
-  -p 18081:18080 \
-  rag-in-one/bge-m3-embed:latest
-```
+- `bge_m3_gpu0` -> `18080`
+- `bge_m3_gpu1` -> `18081`
 
 注意：
 
-- 第二个容器里虽然写的是 `EMBEDDING_DEVICE=cuda:0`，但这是对容器内部来说的
-- 因为它只看得到 `CUDA_VISIBLE_DEVICES=1` 暴露进来的那一张物理卡
-- 所以容器内的 `cuda:0` 实际对应宿主机的物理 `GPU 1`
+- 脚本会为每张 GPU 启动一个独立容器，而不是让一个 Python 进程直接管理所有 GPU
+- 这是因为当前 `bge-m3` 服务实现更适合“一卡一实例”，这样更稳，也更容易扩缩容
+- 容器内统一使用 `EMBEDDING_DEVICE=cuda:0`
+- 这是因为每个容器只看得到自己绑定的那一张物理卡
 
 ## 七、健康检查与功能检查
 
@@ -247,6 +261,17 @@ docker logs -f bge_m3_gpu1
 
 这样 embedding 服务本身保持简单，扩容和摘流量也更容易。
 
+如果你们准备用 Nginx，可以直接参考：
+
+- [nginx.embedding.conf](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/nginx.embedding.conf)
+
+这个配置默认把：
+
+- `127.0.0.1:18080`
+- `127.0.0.1:18081`
+
+作为 upstream 后端，并通过 `8080` 对外提供统一入口。
+
 ## 十、回滚方式
 
 如果新镜像有问题，回滚最简单：
@@ -261,7 +286,8 @@ docker logs -f bge_m3_gpu1
 
 - 继续保留当前 [embedding_service.py](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/embedding_service.py) 作为开发验证版
 - 生产环境使用 [embedding_service_prod.py](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/embedding_service_prod.py)
-- 一张 T4 跑一个容器实例
+- 通过 [docker-runtime.env](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/docker-runtime.env) 指定 `GPU_DEVICES=all` 或具体卡号
+- 每张 GPU 跑一个容器实例
 - 构建时把模型直接烘焙进镜像
 - 生产环境只做离线导入和运行
 
