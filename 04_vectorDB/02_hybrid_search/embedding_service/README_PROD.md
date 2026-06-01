@@ -133,6 +133,49 @@ docker run --rm --gpus all rag-in-one/bge-m3-embed:latest python -c "import torc
 
 这一步不依赖额外在线拉取 `nvidia/cuda` 测试镜像，更适合无法联网的生产环境。
 
+如果这里或后面的启动脚本报：
+
+```text
+failed to discover GPU vendor from CDI: no known GPU vendor found
+```
+
+说明 Docker 还没有正确识别宿主机 NVIDIA GPU。优先在宿主机执行：
+
+```bash
+nvidia-smi
+command -v nvidia-ctk
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+docker run --rm --gpus all rag-in-one/bge-m3-embed:latest python -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count())"
+```
+
+如果生产机明确使用 Docker CDI 模式，再生成 CDI spec：
+
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+nvidia-ctk cdi list
+DOCKER_GPU_MODE=cdi /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_multi_gpu.sh
+```
+
+如果机器使用旧式 NVIDIA runtime 配置，也可以先用 legacy 模式验证：
+
+```bash
+DOCKER_GPU_MODE=runtime /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/run_bge_m3_multi_gpu.sh
+```
+
+生产环境无法联网时，在同系统版本、同 CPU 架构的联网机器上下载离线安装包：
+
+```bash
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/download_nvidia_container_toolkit_offline.sh \
+  --bundle-dir /tmp/nvidia-container-toolkit-offline
+```
+
+把 `/tmp/nvidia-container-toolkit-offline` 整个目录拷到生产环境后安装：
+
+```bash
+sudo bash install_nvidia_container_toolkit_offline.sh --bundle-dir /tmp/nvidia-container-toolkit-offline
+```
+
 如果你们希望保留 `nvidia/cuda` 这种独立测试方式，也可以在公网构建环境提前把测试镜像一起导出，再在生产环境 `docker load` 后使用。
 
 如果上面这一步仍然不方便，最直接的验证方式就是：
@@ -161,6 +204,7 @@ vi /Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embeddi
 
 ```bash
 GPU_DEVICES=all
+DOCKER_GPU_MODE=gpus
 HOST_PORT_BASE=18080
 CONTAINER_PREFIX=bge_m3
 ```
@@ -168,6 +212,9 @@ CONTAINER_PREFIX=bge_m3
 含义是：
 
 - `GPU_DEVICES=all`：自动发现宿主机上所有 GPU，并每张卡启动一个容器
+- `DOCKER_GPU_MODE=gpus`：默认使用 Docker `--gpus device=N`
+- `DOCKER_GPU_MODE=runtime`：使用 `--runtime nvidia` 和 `NVIDIA_VISIBLE_DEVICES=N`
+- `DOCKER_GPU_MODE=cdi`：使用 Docker CDI 设备名 `nvidia.com/gpu=N`
 - `HOST_PORT_BASE=18080`：第一个容器用 `18080`，第二个用 `18081`，依次递增
 - `CONTAINER_PREFIX=bge_m3`：容器名会生成为 `bge_m3_gpu0`、`bge_m3_gpu1` 这种格式
 

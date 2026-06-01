@@ -63,6 +63,8 @@ copy_required_file "${SCRIPT_DIR}/run_bge_m3_multi_gpu.sh" "${BUNDLE_DIR}"
 copy_required_file "${SCRIPT_DIR}/docker-runtime.env" "${BUNDLE_DIR}"
 copy_required_file "${SCRIPT_DIR}/README_PROD.md" "${BUNDLE_DIR}"
 copy_required_file "${SCRIPT_DIR}/nginx.embedding.conf" "${BUNDLE_DIR}"
+copy_required_file "${SCRIPT_DIR}/download_nvidia_container_toolkit_offline.sh" "${BUNDLE_DIR}"
+copy_required_file "${SCRIPT_DIR}/install_nvidia_container_toolkit_offline.sh" "${BUNDLE_DIR}"
 
 if compgen -G "${SEARCH_DIR}/${TAR_GLOB}" >/dev/null 2>&1; then
   for tar_file in "${SEARCH_DIR}"/${TAR_GLOB}; do
@@ -79,12 +81,16 @@ Required files in this bundle:
 - docker-runtime.env
 - README_PROD.md
 - nginx.embedding.conf
+- download_nvidia_container_toolkit_offline.sh
+- install_nvidia_container_toolkit_offline.sh
 
 Optional files:
 - bge-m3-embed*.tar
 EOF
 
 chmod +x "${BUNDLE_DIR}/run_bge_m3_multi_gpu.sh"
+chmod +x "${BUNDLE_DIR}/download_nvidia_container_toolkit_offline.sh"
+chmod +x "${BUNDLE_DIR}/install_nvidia_container_toolkit_offline.sh"
 
 echo "bundle created at: ${BUNDLE_DIR}"
 ls -la "${BUNDLE_DIR}"

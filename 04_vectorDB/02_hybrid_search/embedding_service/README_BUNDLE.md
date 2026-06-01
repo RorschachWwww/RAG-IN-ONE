@@ -6,10 +6,24 @@
 - [docker-runtime.env](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/docker-runtime.env)
 - [README_PROD.md](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/README_PROD.md)
 - [nginx.embedding.conf](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/nginx.embedding.conf)
+- [download_nvidia_container_toolkit_offline.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/download_nvidia_container_toolkit_offline.sh)
+- [install_nvidia_container_toolkit_offline.sh](/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/install_nvidia_container_toolkit_offline.sh)
 
 如果你还没有把 image 导入到生产环境，还需要镜像 tar 文件，例如：
 
 - `bge-m3-embed-latest.tar`
+
+如果生产环境无法联网安装 NVIDIA Container Toolkit，可以在同系统版本的联网机器上执行：
+
+```bash
+/Users/wuxucan/code/rag-codes/RAG-IN-ONE/04_vectorDB/02_hybrid_search/embedding_service/download_nvidia_container_toolkit_offline.sh
+```
+
+然后把生成的 `nvidia-container-toolkit-offline` 目录拷到生产环境，执行：
+
+```bash
+sudo bash install_nvidia_container_toolkit_offline.sh --bundle-dir /path/to/nvidia-container-toolkit-offline
+```
 
 ## 一键收集脚本
 
